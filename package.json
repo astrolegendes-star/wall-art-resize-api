@@ -5,20 +5,3 @@
     "sharp": "^0.33.2"
   }
 }
-```
-
-(J'ai enlevé `"type": "module"`)
-
-### 7. Commit changes
-
----
-
-### 8. Attendre le re-déploiement automatique (1-2 min)
-
-Vercel va automatiquement re-déployer quand tu modifies le code sur GitHub.
-
----
-
-### 9. Re-tester l'URL :
-```
-https://wall-art-resize-api.vercel.app/api/resize?url=https://picsum.photos/1000/1500&width=500&height=750
