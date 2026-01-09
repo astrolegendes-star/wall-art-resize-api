@@ -1,13 +1,6 @@
-import sharp from 'sharp';
+const sharp = require('sharp');
 
-export const config = {
-  api: {
-    bodyParser: false,
-    responseLimit: '50mb',
-  },
-};
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -43,7 +36,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const imageBuffer = Buffer.from(arrayBuffer);
 
     // Resize avec Sharp
     let sharpInstance = sharp(imageBuffer)
@@ -81,105 +75,4 @@ export default async function handler(req, res) {
       details: error.message 
     });
   }
-}
-```
-
-Cliquer **"Commit changes"**
-
----
-
-## 📋 ÉTAPE 4 : Déployer sur Vercel (2 min)
-
-### 4.1 Retourner sur Vercel
-```
-👉 https://vercel.com/dashboard
-```
-
-### 4.2 Cliquer "Add New..." → "Project"
-
-### 4.3 Importer ton repository GitHub
-- Tu verras la liste de tes repositories GitHub
-- Trouve `wall-art-resize-api`
-- Cliquer "Import"
-
-### 4.4 Configuration du déploiement
-- **Project Name** : `wall-art-resize-api` (ou ce que tu veux)
-- **Framework Preset** : `Other`
-- **Root Directory** : `.` (laisser par défaut)
-
-### 4.5 Cliquer "Deploy"
-
-⏳ **Attendre 1-2 minutes...**
-
-### 4.6 C'EST DÉPLOYÉ ! 🎉
-
-Tu verras un message "Congratulations!" avec ton URL :
-```
-https://wall-art-resize-api.vercel.app
-```
-
----
-
-## 📋 ÉTAPE 5 : Tester l'API (1 min)
-
-### 5.1 Ouvrir cette URL dans ton navigateur :
-
-Remplace `TON-PROJET` par ton nom de projet Vercel :
-```
-https://TON-PROJET.vercel.app/api/resize?url=https://picsum.photos/1000/1500&width=500&height=750
-```
-
-### 5.2 Si tu vois une image redimensionnée = ÇA MARCHE ! ✅
-
----
-
-## 📋 ÉTAPE 6 : Configurer dans Supabase (1 min)
-
-### 6.1 Aller dans Supabase
-```
-👉 https://supabase.com/dashboard
-```
-
-### 6.2 Sélectionner ton projet
-
-### 6.3 Aller dans Settings → Edge Functions → Secrets
-
-### 6.4 Ajouter un nouveau secret :
-```
-Name: RESIZE_API_URL
-Value: https://TON-PROJET.vercel.app/api/resize
-```
-
-(Remplace `TON-PROJET` par ton vrai nom de projet)
-
-### 6.5 Cliquer "Save"
-
-✅ **Configuration terminée !**
-
----
-
-## 📊 RÉCAP VISUEL
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      CE QUE TU AS CRÉÉ                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  GitHub Repository                                               │
-│  └── wall-art-resize-api/                                       │
-│      ├── package.json        (dépendances)                      │
-│      ├── vercel.json         (config Vercel)                    │
-│      └── api/                                                   │
-│          └── resize.js       (le code qui resize)               │
-│                                                                  │
-│                    ↓ Déployé sur ↓                              │
-│                                                                  │
-│  Vercel                                                         │
-│  └── https://ton-projet.vercel.app/api/resize                   │
-│      └── ?url=xxx&width=500&height=750                          │
-│                                                                  │
-│                    ↓ Utilisé par ↓                              │
-│                                                                  │
-│  Supabase Edge Functions                                        │
-│  └── process-design appelle l'API pour resize                   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+};
