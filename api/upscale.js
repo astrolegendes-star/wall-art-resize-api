@@ -3,19 +3,20 @@ const https = require('https');
 const http = require('http');
 
 function downloadImage(url) {
-  return new Promise((resolve, reject) => {
-    const protocol = url.startsWith('https') ? https : http;
-    protocol.get(url, (response) => {
+  return new Promise(function(resolve, reject) {
+    var protocol = url.startsWith('https') ? https : http;
+    protocol.get(url, function(response) {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        return downloadImage(response.headers.location).then(resolve).catch(reject);
+        downloadImage(response.headers.location).then(resolve).catch(reject);
+        return;
       }
       if (response.statusCode !== 200) {
         reject(new Error('Failed to fetch: ' + response.statusCode));
         return;
       }
-      const chunks = [];
-      response.on('data', (chunk) => chunks.push(chunk));
-      response.on('end', () => resolve(Buffer.concat(chunks)));
+      var chunks = [];
+      response.on('data', function(chunk) { chunks.push(chunk); });
+      response.on('end', function() { resolve(Buffer.concat(chunks)); });
       response.on('error', reject);
     }).on('error', reject);
   });
@@ -31,20 +32,21 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const url = req.query.url;
-    const targetSize = parseInt(req.query.targetSize) || 4096;
+    var url = req.query.url;
+    var targetSize = parseInt(req.query.targetSize) || 4096;
 
     if (!url) {
       return res.status(400).json({ error: 'url parameter required' });
     }
 
-    const decodedUrl = decodeURIComponent(url);
-    const imageBuffer = await downloadImage(decodedUrl);
-    const metadata = await sharp(imageBuffer).metadata();
-    const width = metadata.width;
-    const height = metadata.height;
+    var decodedUrl = decodeURIComponent(url);
+    var imageBuffer = await downloadImage(decodedUrl);
+    var metadata = await sharp(imageBuffer).metadata();
+    var width = metadata.width;
+    var height = metadata.height;
 
-    var newWidth, newHeight;
+    var newWidth;
+    var newHeight;
     
     if (width >= height) {
       if (width >= targetSize) {
