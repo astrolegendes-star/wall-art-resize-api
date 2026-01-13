@@ -96,5 +96,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 };
-```
-https://wall-art-resize-api.vercel.app/api/upscale?url=https://picsum.photos/1000/1500&targetSize=4096
