@@ -1,4 +1,25 @@
 const sharp = require('sharp');
+const https = require('https');
+const http = require('http');
+
+function downloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith('https') ? https : http;
+    protocol.get(url, (response) => {
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        return downloadImage(response.headers.location).then(resolve).catch(reject);
+      }
+      if (response.statusCode !== 200) {
+        reject(new Error('Failed to fetch: ' + response.statusCode));
+        return;
+      }
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+      response.on('error', reject);
+    }).on('error', reject);
+  });
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,105 +31,70 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { url, targetSize = 4096 } = req.query;
+    const url = req.query.url;
+    const targetSize = parseInt(req.query.targetSize) || 4096;
 
     if (!url) {
       return res.status(400).json({ error: 'url parameter required' });
     }
 
-    console.log('=== SHARP UPSCALE LANCZOS3 ===');
-    console.log('Target size:', targetSize);
-
-    // Télécharger l'image source
-    const imageResponse = await fetch(decodeURIComponent(url));
-    if (!imageResponse.ok) {
-      return res.status(400).json({ error: `Failed to fetch: ${imageResponse.status}` });
-    }
-
-    const arrayBuffer = await imageResponse.arrayBuffer();
-    const imageBuffer = Buffer.from(arrayBuffer);
-
-    // Obtenir les dimensions originales
+    const decodedUrl = decodeURIComponent(url);
+    const imageBuffer = await downloadImage(decodedUrl);
     const metadata = await sharp(imageBuffer).metadata();
-    const { width, height } = metadata;
-    
-    console.log(`Original: ${width}x${height}`);
+    const width = metadata.width;
+    const height = metadata.height;
 
-    // Calculer les nouvelles dimensions (garder le ratio)
-    const maxDimension = parseInt(targetSize);
-    let newWidth, newHeight;
+    var newWidth, newHeight;
     
     if (width >= height) {
-      // Paysage ou carré
-      if (width >= maxDimension) {
-        // Déjà assez grand
+      if (width >= targetSize) {
         newWidth = width;
         newHeight = height;
       } else {
-        newWidth = maxDimension;
-        newHeight = Math.round((height / width) * maxDimension);
+        newWidth = targetSize;
+        newHeight = Math.round((height / width) * targetSize);
       }
     } else {
-      // Portrait
-      if (height >= maxDimension) {
-        // Déjà assez grand
+      if (height >= targetSize) {
         newWidth = width;
         newHeight = height;
       } else {
-        newHeight = maxDimension;
-        newWidth = Math.round((width / height) * maxDimension);
+        newHeight = targetSize;
+        newWidth = Math.round((width / height) * targetSize);
       }
     }
 
-    const needsUpscale = newWidth !== width || newHeight !== height;
-    
-    console.log(`Target: ${newWidth}x${newHeight} (upscale needed: ${needsUpscale})`);
-
-    let outputBuffer;
+    var needsUpscale = (newWidth !== width || newHeight !== height);
+    var outputBuffer;
     
     if (needsUpscale) {
-      // Upscale avec Lanczos3 (meilleur algorithme)
       outputBuffer = await sharp(imageBuffer)
         .resize(newWidth, newHeight, {
           kernel: 'lanczos3',
           fit: 'fill',
-          withoutEnlargement: false,
+          withoutEnlargement: false
         })
-        .sharpen({
-          sigma: 0.5,
-          m1: 0.5,
-          m2: 0.5,
-        })
-        .png({ quality: 100 })
+        .sharpen({ sigma: 0.5 })
+        .png()
         .toBuffer();
     } else {
-      // Pas besoin d'upscale, juste convertir en PNG
       outputBuffer = await sharp(imageBuffer).png().toBuffer();
     }
 
-    console.log(`Output: ${newWidth}x${newHeight} (${outputBuffer.length} bytes)`);
-
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Content-Length', outputBuffer.length);
-    res.setHeader('X-Original-Width', width);
-    res.setHeader('X-Original-Height', height);
-    res.setHeader('X-New-Width', newWidth);
-    res.setHeader('X-New-Height', newHeight);
+    res.setHeader('X-Original-Width', String(width));
+    res.setHeader('X-Original-Height', String(height));
+    res.setHeader('X-New-Width', String(newWidth));
+    res.setHeader('X-New-Height', String(newHeight));
     res.setHeader('X-Upscaled', needsUpscale ? 'true' : 'false');
     
     return res.status(200).send(outputBuffer);
 
   } catch (error) {
-    console.error('Upscale error:', error);
+    console.error('Error:', error);
     return res.status(500).json({ error: error.message });
   }
 };
-```
-
-### 6️⃣ Clique "Commit changes" (bouton vert)
-
-### 7️⃣ Attendre 30 secondes (Vercel redéploie automatiquement)
-
-### 8️⃣ Tester l'API upscale :
 ```
 https://wall-art-resize-api.vercel.app/api/upscale?url=https://picsum.photos/1000/1500&targetSize=4096
